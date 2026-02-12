@@ -17,3 +17,8 @@ output "app_sg_id" {
   description = "Security Group ID for App"
   value       = module.security.app_sg_id
 }
+
+output "ecr_repository_url" {
+  description = "The URL of the ECR repository"
+  value       = module.ecr.repository_url
+}
