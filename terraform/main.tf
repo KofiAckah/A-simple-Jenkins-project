@@ -37,3 +37,14 @@ module "compute" {
   jenkins_instance_profile = module.security.jenkins_profile_name
   app_instance_profile     = module.security.app_profile_name
 }
+
+resource "local_file" "ansible_inventory" {
+  content = <<EOT
+[jenkins_server]
+${module.compute.jenkins_public_ip} ansible_user=ec2-user ansible_ssh_private_key_file=~/.ssh/${var.key_name}.pem
+
+[app_server]
+${module.compute.app_public_ip} ansible_user=ec2-user ansible_ssh_private_key_file=~/.ssh/${var.key_name}.pem
+EOT
+  filename = "../ansible/inventory.ini"
+}
