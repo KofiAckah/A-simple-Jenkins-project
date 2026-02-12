@@ -22,3 +22,13 @@ output "ecr_repository_url" {
   description = "The URL of the ECR repository"
   value       = module.ecr.repository_url
 }
+
+output "jenkins_public_ip" {
+  description = "Public IP of the Jenkins Server"
+  value       = module.compute.jenkins_public_ip
+}
+
+output "app_public_ip" {
+  description = "Public IP of the App Server"
+  value       = module.compute.app_public_ip
+}
