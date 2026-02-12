@@ -41,3 +41,5 @@ ansible.log
 *.key
 .aws/
 creds.txt
+
+assignment.*
