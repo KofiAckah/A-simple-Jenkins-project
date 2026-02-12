@@ -6,3 +6,12 @@ module "networking" {
   project_name       = var.project_name
   environment        = var.environment
 }
+
+module "security" {
+  source = "./security"
+
+  vpc_id         = module.networking.vpc_id
+  ssh_allowed_ip = var.ssh_allowed_ip
+  project_name   = var.project_name
+  environment    = var.environment
+}

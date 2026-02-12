@@ -7,3 +7,13 @@ output "public_subnet_id" {
   description = "The ID of the public subnet created in the networking module"
   value       = module.networking.public_subnet_id
 }
+
+output "jenkins_sg_id" {
+  description = "Security Group ID for Jenkins"
+  value       = module.security.jenkins_sg_id
+}
+
+output "app_sg_id" {
+  description = "Security Group ID for App"
+  value       = module.security.app_sg_id
+}
