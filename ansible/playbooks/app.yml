@@ -1,0 +1,29 @@
+---
+- name: Configure Application Server
+  hosts: app_server
+  become: yes
+
+  tasks:
+    - name: Update all packages
+      dnf:
+        name: "*"
+        state: latest
+
+    - name: Install Docker and Git
+      dnf:
+        name:
+          - docker
+          - git
+        state: present
+
+    - name: Start and enable Docker service
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Add 'ec2-user' user to 'docker' group
+      user:
+        name: ec2-user
+        groups: docker
+        append: yes
