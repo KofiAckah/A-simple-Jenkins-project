@@ -24,49 +24,40 @@ pipeline {
         stage('Get App Server IP from Terraform Output') {
             steps {
                 script {
-                    echo '=== Fetching App Server IP from AWS ==='
+                    echo '=== Fetching App Server Private IP from AWS ==='
                     
-                    // Option A: Read from inventory.ini in the repo
-                    if (fileExists('ansible/inventory.ini')) {
-                        def inventoryContent = readFile('ansible/inventory.ini')
-                        def appServerLine = inventoryContent.split('\n').find { it.contains('[app_server]') }
-                        if (appServerLine != null) {
-                            def lines = inventoryContent.split('\n')
-                            def appServerIndex = lines.findIndexOf { it.contains('[app_server]') }
-                            if (appServerIndex >= 0 && appServerIndex + 1 < lines.size()) {
-                                def ipLine = lines[appServerIndex + 1]
-                                env.APP_SERVER_IP = ipLine.split(' ')[0].trim()
-                                echo "Found App Server IP from inventory: ${env.APP_SERVER_IP}"
-                            }
-                        }
-                    }
+                    // Query AWS for PRIVATE IP (same VPC communication)
+                    def appServerPrivateIp = sh(
+                        script: """
+                            aws ec2 describe-instances \
+                              --region ${AWS_REGION} \
+                              --filters "Name=tag:Name,Values=jenkins-cicd-dev-app-server" \
+                                        "Name=instance-state-name,Values=running" \
+                              --query 'Reservations[0].Instances[0].PrivateIpAddress' \
+                              --output text
+                        """,
+                        returnStdout: true
+                    ).trim()
                     
-                    // Option B: Query AWS directly using EC2 tags
-                    if (!env.APP_SERVER_IP) {
-                        echo 'Inventory file not found, querying AWS EC2...'
-                        def appServerIp = sh(
-                            script: """
-                                aws ec2 describe-instances \
-                                  --region ${AWS_REGION} \
-                                  --filters "Name=tag:Name,Values=jenkins-cicd-dev-app-server" \
-                                            "Name=instance-state-name,Values=running" \
-                                  --query 'Reservations[0].Instances[0].PublicIpAddress' \
-                                  --output text
-                            """,
-                            returnStdout: true
-                        ).trim()
-                        
-                        if (appServerIp && appServerIp != 'None') {
-                            env.APP_SERVER_IP = appServerIp
-                            echo "Found App Server IP from AWS: ${env.APP_SERVER_IP}"
-                        } else {
-                            error "Unable to find App Server IP. Please ensure the app server is running."
-                        }
-                    }
+                    def appServerPublicIp = sh(
+                        script: """
+                            aws ec2 describe-instances \
+                              --region ${AWS_REGION} \
+                              --filters "Name=tag:Name,Values=jenkins-cicd-dev-app-server" \
+                                        "Name=instance-state-name,Values=running" \
+                              --query 'Reservations[0].Instances[0].PublicIpAddress' \
+                              --output text
+                        """,
+                        returnStdout: true
+                    ).trim()
                     
-                    // Validate we have an IP
-                    if (!env.APP_SERVER_IP || env.APP_SERVER_IP == '') {
-                        error "APP_SERVER_IP could not be determined. Please check your infrastructure."
+                    if (appServerPrivateIp && appServerPrivateIp != 'None') {
+                        env.APP_SERVER_PRIVATE_IP = appServerPrivateIp
+                        env.APP_SERVER_PUBLIC_IP = appServerPublicIp
+                        echo "Found App Server Private IP: ${env.APP_SERVER_PRIVATE_IP}"
+                        echo "Found App Server Public IP: ${env.APP_SERVER_PUBLIC_IP}"
+                    } else {
+                        error "Unable to find App Server. Please ensure the app server is running."
                     }
                 }
             }
@@ -121,11 +112,11 @@ pipeline {
         
         stage('Deploy to App Server') {
             steps {
-                echo "=== Deploying application to App Server (${env.APP_SERVER_IP}) ==="
+                echo "=== Deploying application to App Server (Private: ${env.APP_SERVER_PRIVATE_IP}, Public: ${env.APP_SERVER_PUBLIC_IP}) ==="
                 script {
                     sshagent(['ec2-ssh-key']) {
                         sh """
-                            ssh -o StrictHostKeyChecking=no ec2-user@${env.APP_SERVER_IP} << 'ENDSSH'
+                            ssh -o StrictHostKeyChecking=no ec2-user@${env.APP_SERVER_PRIVATE_IP} << 'ENDSSH'
                             
                             # Login to ECR from app server
                             aws ecr get-login-password --region ${AWS_REGION} | \
@@ -178,7 +169,7 @@ ENDSSH
     post {
         success {
             echo '✅ Pipeline completed successfully!'
-            echo "Application deployed and accessible at: http://${env.APP_SERVER_IP}:3000"
+            echo "Application deployed and accessible at: http://${env.APP_SERVER_PUBLIC_IP}:3000"
         }
         
         failure {
