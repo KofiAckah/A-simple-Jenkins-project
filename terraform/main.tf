@@ -45,6 +45,9 @@ ${module.compute.jenkins_public_ip} ansible_user=ec2-user ansible_ssh_private_ke
 
 [app_server]
 ${module.compute.app_public_ip} ansible_user=ec2-user ansible_ssh_private_key_file=./${var.key_name}.pem
+
+[all:vars]
+ansible_python_interpreter=/usr/bin/python3
 EOT
   filename = "../ansible/inventory.ini"
 }
