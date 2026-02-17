@@ -38,12 +38,22 @@ resource "aws_security_group" "app_sg" {
   description = "Security group for App Server"
   vpc_id      = var.vpc_id
 
+  # SSH from your IP (for manual access)
   ingress {
     description = "SSH from allowed IP"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
     cidr_blocks = [var.ssh_allowed_ip]
+  }
+
+  # SSH from Jenkins server (for automated deployment)
+  ingress {
+    description     = "SSH from Jenkins Server"
+    from_port       = 22
+    to_port         = 22
+    protocol        = "tcp"
+    security_groups = [aws_security_group.jenkins_sg.id]
   }
 
   ingress {
