@@ -105,6 +105,27 @@ resource "aws_iam_role_policy_attachment" "jenkins_ecr_poweruser" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"
 }
 
+# Add EC2 read permissions for Jenkins to query instance IPs
+resource "aws_iam_role_policy" "jenkins_ec2_read" {
+  name = "${var.project_name}-${var.environment}-jenkins-ec2-read"
+  role = aws_iam_role.jenkins_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ec2:DescribeInstances",
+          "ec2:DescribeInstanceStatus",
+          "ec2:DescribeTags"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
 resource "aws_iam_instance_profile" "jenkins_profile" {
   name = "${var.project_name}-${var.environment}-jenkins-profile"
   role = aws_iam_role.jenkins_role.name
