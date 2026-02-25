@@ -4,7 +4,7 @@
 
 A production-ready CI/CD pipeline that automates the entire software delivery process from code commit to production deployment using Jenkins, Docker, AWS ECR, Terraform, and Ansible.
 
-## 📋 Table of Contents
+## Table of Contents
 
 - [Overview](#overview)
 - [Project Architecture](#project-architecture)
@@ -19,7 +19,7 @@ A production-ready CI/CD pipeline that automates the entire software delivery pr
 - [Technologies Used](#technologies-used)
 - [Author](#author)
 
-## 🎯 Overview
+## Overview
 
 This project demonstrates a complete DevOps workflow implementing Infrastructure as Code (IaC), Configuration Management, Containerization, and Continuous Integration/Continuous Deployment (CI/CD) best practices.
 
@@ -33,7 +33,10 @@ This project demonstrates a complete DevOps workflow implementing Infrastructure
 6. **Deploys Applications** - Automatically deploys to production server
 7. **Monitors Health** - Verifies deployment success
 
-## 🏗️ Project Architecture
+## Project Architecture
+
+![CI/CD Architecture Diagram](./architecture_diagram.png)
+
 
 ```
 ┌─────────────┐         ┌──────────────┐         ┌─────────────┐
@@ -50,48 +53,66 @@ This project demonstrates a complete DevOps workflow implementing Infrastructure
 ```
 
 **Infrastructure Components:**
-- **VPC**: Isolated network environment (10.0.0.0/16)
-- **EC2 Instances**: Jenkins server (t3.medium), App server (t3.micro)
-- **ECR**: Private Docker registry
-- **Security Groups**: Granular access control
-- **IAM Roles**: Least privilege permissions
-- **S3**: Terraform state backend
+- **VPC**: Isolated network environment (`10.0.0.0/16`) with public subnet (`10.0.1.0/24`)
+- **Internet Gateway**: `jenkins-cicd-dev-igw` — routes public traffic (`0.0.0.0/0`)
+- **EC2 Instances**:
+  - Jenkins server (`t3.medium`) — CI/CD orchestration, Docker builds, pipeline execution
+  - App server (`t3.micro`) — runs the Dockerised Node.js application
+- **ECR**: Private Docker registry (`jenkins-cicd-app`) — stores versioned images
+- **Security Groups**:
+  - `jenkins-cicd-dev-jenkins-sg` — TCP 22 (SSH), TCP 8080 (Jenkins UI)
+  - `jenkins-cicd-dev-app-sg` — TCP 22 (SSH from jenkins-sg + allowed IP), TCP 3000 (app)
+- **IAM Roles**:
+  - Jenkins role — `AmazonEC2ContainerRegistryPowerUser` + EC2 describe permissions
+  - App role — `AmazonEC2ContainerRegistryReadOnly`
+- **S3**: Terraform remote state backend (`terraform-state-management-a-simple-jenkins-project`)
 
-*Architecture diagram coming soon*
+**Pipeline Flow (8 Stages):**
 
-## ✨ Features
+| # | Stage | Action |
+|---|-------|--------|
+| 1 | Checkout | Clone from GitHub (`main` branch) |
+| 2 | Get App Server IP | Query AWS EC2 API for app server private IP |
+| 3 | Install Dependencies | `npm install` in `app/` |
+| 4 | Run Tests | `npm test` (Jest — 2 test suites) |
+| 5 | Build Docker Image | Multi-stage build (Node 18-alpine), tag `:BUILD_NUMBER` + `:latest` |
+| 6 | Push to ECR | `docker push` both tags to ECR |
+| 7 | Deploy to App Server | SSH → `docker pull` → `docker run -p 3000:3000` → health check |
+| 8 | Cleanup | Prune old images on Jenkins, keep last 3 builds |
+
+## Features
 
 ### Infrastructure as Code (Terraform)
-- ✅ Modular Terraform design for reusability
-- ✅ Separate modules for networking, security, compute, and ECR
-- ✅ Remote state management in S3
-- ✅ Environment-specific configurations (dev.tfvars)
+- Modular Terraform design for reusability
+- Separate modules for networking, security, compute, and ECR
+- Remote state management in S3
+- Environment-specific configurations (dev.tfvars)
 
 ### Configuration Management (Ansible)
-- ✅ Automated server provisioning
-- ✅ Jenkins installation and configuration
-- ✅ Docker setup on both servers
-- ✅ Swap space configuration for performance
-- ✅ Idempotent playbooks
+- Automated server provisioning
+- Jenkins installation and configuration
+- Docker setup on both servers
+- Swap space configuration for performance
+- Idempotent playbooks
 
 ### CI/CD Pipeline
-- ✅ Automated builds triggered from GitHub
-- ✅ Unit testing with Jest
-- ✅ Docker image creation with semantic versioning
-- ✅ Automated push to AWS ECR
-- ✅ Zero-downtime deployments
-- ✅ Health check validation
-- ✅ Automatic cleanup of old images
+- Automated builds triggered from GitHub
+- Unit testing with Jest
+- Docker image creation with semantic versioning
+- Automated push to AWS ECR
+- Zero-downtime deployments
+- Health check validation
+- Automatic cleanup of old images
 
 ### Security
-- ✅ IAM roles instead of AWS credentials
-- ✅ Security group rules with least privilege
-- ✅ Private VPC deployment
-- ✅ SSH key-based authentication
-- ✅ ECR image scanning
-- ✅ Secrets managed via Jenkins credentials
+- IAM roles instead of AWS credentials
+- Security group rules with least privilege
+- Private VPC deployment
+- SSH key-based authentication
+- ECR image scanning
+- Secrets managed via Jenkins credentials
 
-## 📦 Prerequisites
+## Prerequisites
 
 Before you begin, ensure you have:
 
@@ -109,7 +130,7 @@ Before you begin, ensure you have:
 - 8GB RAM minimum
 - 20GB free disk space
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 Jenkins-project/
@@ -169,7 +190,7 @@ Jenkins-project/
 └── README.md                 # This file
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Option 1: Deploy Everything (5-10 minutes)
 
@@ -208,7 +229,7 @@ ssh -i ../ansible/AutoKeyPair.pem ec2-user@$JENKINS_IP \
 
 ### Option 2: Step-by-Step (See Detailed Setup Guide)
 
-## 📖 Detailed Setup Guide
+## Detailed Setup Guide
 
 ### Step 1: Infrastructure Provisioning with Terraform
 
@@ -291,13 +312,13 @@ ansible-playbook playbooks/jenkins.yml
 ```
 
 **What this playbook does:**
-- ✅ Updates system packages
-- ✅ Installs Java 17 (Jenkins requirement)
-- ✅ Adds Jenkins repository and GPG key
-- ✅ Installs and starts Jenkins service
-- ✅ Installs Docker and Git
-- ✅ Adds jenkins user to docker group
-- ✅ Creates 2GB swap file for performance
+- Updates system packages
+- Installs Java 17 (Jenkins requirement)
+- Adds Jenkins repository and GPG key
+- Installs and starts Jenkins service
+- Installs Docker and Git
+- Adds jenkins user to docker group
+- Creates 2GB swap file for performance
 
 #### 2.3 Configure App Server
 
@@ -334,9 +355,9 @@ Open browser: `http://<jenkins-ip>:8080`
 Go to **Manage Jenkins → Plugins → Available**
 
 Search and install:
-- ✅ **Docker Pipeline**
-- ✅ **SSH Agent**
-- ✅ **AWS Credentials** (if not already installed)
+- **Docker Pipeline**
+- **SSH Agent**
+- **AWS Credentials** (if not already installed)
 
 Restart Jenkins after installation.
 
@@ -410,11 +431,11 @@ exit
 #### 4.2 Configure Pipeline
 
 **General Section:**
-- ☑ GitHub project
+- GitHub project
 - **Project URL:** `https://github.com/KofiAckah/A-simple-Jenkins-project/`
 
 **Build Triggers:**
-- ☑ Poll SCM
+- Poll SCM
 - **Schedule:** `H/5 * * * *` (poll every 5 minutes)
 
 **Pipeline Section:**
@@ -432,16 +453,16 @@ Click **Save**
 1. Click **"Build Now"**
 2. Monitor the build in **"Console Output"**
 3. Watch each stage execute:
-   - ✅ Checkout code from GitHub
-   - ✅ Get App Server IP from AWS
-   - ✅ Install dependencies
-   - ✅ Run tests
-   - ✅ Build Docker image
-   - ✅ Push to ECR
-   - ✅ Deploy to App Server
-   - ✅ Cleanup old images
+   - Checkout code from GitHub
+   - Get App Server IP from AWS
+   - Install dependencies
+   - Run tests
+   - Build Docker image
+   - Push to ECR
+   - Deploy to App Server
+   - Cleanup old images
 
-## 🔄 Pipeline Stages
+## Pipeline Stages
 
 The [`Jenkinsfile`](Jenkinsfile) defines 8 stages:
 
@@ -500,7 +521,7 @@ docker images | grep <build-number> | sort -rn | tail -n +4 | xargs docker rmi
 ```
 Removes old images, keeping only the last 3 builds.
 
-## 🧪 Testing the Application
+## Testing the Application
 
 ### Local Testing
 ```bash
@@ -526,7 +547,7 @@ curl http://$APP_IP:3000/health
 echo "Visit: http://$APP_IP:3000"
 ```
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Common Issues & Solutions
 
@@ -591,7 +612,7 @@ terraform force-unlock <LOCK_ID>
 4. **Test locally first** - Run npm test and docker build locally
 5. **Check security groups** - Ensure proper ingress/egress rules
 
-## 📸 Screenshots
+## Screenshots
 
 ### Failed Builds (Debugging Process)
 
@@ -606,21 +627,21 @@ Early builds encountered issues that were systematically resolved:
 ### Successful Pipeline
 
 ![Build #9 Passed](./assets/build9_pass.png)
-*Build #9: Complete success! All stages executed perfectly* ✅
+*Build #9: Complete success! All stages executed perfectly*
 
 **Pipeline Execution Summary:**
-- ✅ **Checkout:** Code retrieved from GitHub
-- ✅ **Get App Server IP:** AWS query successful (Private IP: 10.0.1.47)
-- ✅ **Install Dependencies:** npm packages installed
-- ✅ **Run Tests:** All Jest tests passed (2/2)
-- ✅ **Build Docker Image:** Image created with tag `build:9`
-- ✅ **Push to ECR:** Images pushed to registry
-- ✅ **Deploy to App Server:** Container deployed and health check passed
-- ✅ **Cleanup:** Old images removed
+- **Checkout:** Code retrieved from GitHub
+- **Get App Server IP:** AWS query successful (Private IP: 10.0.1.47)
+- **Install Dependencies:** npm packages installed
+- **Run Tests:** All Jest tests passed (2/2)
+- **Build Docker Image:** Image created with tag `build:9`
+- **Push to ECR:** Images pushed to registry
+- **Deploy to App Server:** Container deployed and health check passed
+- **Cleanup:** Old images removed
 
 **Total Execution Time:** ~2 minutes
 
-## 🛠️ Technologies Used
+## Technologies Used
 
 ### Infrastructure & Cloud
 - **Terraform** (v1.0+) - Infrastructure as Code
@@ -650,7 +671,7 @@ Early builds encountered issues that were systematically resolved:
 - **JavaScript** - Application code
 - **Bash** - Shell scripting
 
-## 🧹 Cleanup
+## Cleanup
 
 To destroy all AWS resources and avoid charges:
 
@@ -665,14 +686,14 @@ terraform destroy -var-file=dev.tfvars -auto-approve
 ```
 
 **Note:** This will delete:
-- ✅ EC2 instances (Jenkins + App servers)
-- ✅ Security groups
-- ✅ VPC, subnets, route tables
-- ✅ ECR repository and all images
-- ✅ IAM roles and policies
-- ❌ S3 bucket (manual deletion required)
+- EC2 instances (Jenkins + App servers)
+- Security groups
+- VPC, subnets, route tables
+- ECR repository and all images
+- IAM roles and policies
+- S3 bucket (manual deletion required)
 
-## 📚 Learning Outcomes
+## Learning Outcomes
 
 This project demonstrates proficiency in:
 
@@ -684,18 +705,18 @@ This project demonstrates proficiency in:
 6. **DevOps Best Practices** - Version control, automation, monitoring
 7. **Problem Solving** - Debugging issues systematically (see screenshots)
 
-## 🎓 Assignment Compliance
+## Assignment Compliance
 
 This project fulfills the "Complete CI/CD Pipeline (Jenkins)" assignment requirements:
 
-✅ **Infrastructure Setup** - Terraform provisions all AWS resources  
-✅ **Configuration Management** - Ansible configures servers  
-✅ **Application Containerization** - Docker packages the Node.js app  
-✅ **CI/CD Implementation** - Jenkins automates the entire pipeline  
-✅ **Testing Integration** - Automated unit tests with Jest  
-✅ **Deployment Automation** - Zero-touch deployment to production  
-✅ **Documentation** - Comprehensive README and setup guide  
-✅ **Version Control** - GitHub repository with proper .gitignore  
-✅ **Security** - IAM roles, security groups, SSH keys
+**Infrastructure Setup** - Terraform provisions all AWS resources  
+**Configuration Management** - Ansible configures servers  
+**Application Containerization** - Docker packages the Node.js app  
+**CI/CD Implementation** - Jenkins automates the entire pipeline  
+**Testing Integration** - Automated unit tests with Jest  
+**Deployment Automation** - Zero-touch deployment to production  
+**Documentation** - Comprehensive README and setup guide  
+**Version Control** - GitHub repository with proper .gitignore  
+**Security** - IAM roles, security groups, SSH keys
 
 *For detailed Jenkins configuration instructions, see [JENKINS_SETUP.md](JENKINS_SETUP.md)*
